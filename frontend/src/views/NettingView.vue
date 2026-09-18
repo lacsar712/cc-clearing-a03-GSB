@@ -13,8 +13,21 @@
         </el-select>
         <el-button type="primary" :disabled="!auth.isOperator" :loading="running" @click="execute">执行轧差</el-button>
         <el-button @click="loadRuns">刷新批次</el-button>
+        <el-tag v-if="selectedHoliday" type="danger">该交割日为清算假日：{{ selectedHoliday.name }}</el-tag>
       </div>
     </div>
+
+    <el-alert
+      v-if="errorMsg"
+      class="fail-alert"
+      type="error"
+      :closable="true"
+      show-icon
+      title="轧差失败"
+      @close="errorMsg = ''"
+    >
+      <span class="mono">{{ errorMsg }}</span>
+    </el-alert>
 
     <div v-if="result" class="card-panel" style="margin-top:16px">
       <div class="toolbar" style="justify-content:space-between">
@@ -57,7 +70,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../api/client'
 import { useAuthStore } from '../stores/auth'
@@ -70,6 +83,11 @@ const loading = ref(false)
 const result = ref(null)
 const runs = ref([])
 const memberMap = ref({})
+const holidays = ref([])
+const errorMsg = ref('')
+
+const holidayMap = computed(() => Object.fromEntries(holidays.value.map((h) => [h.date, h])))
+const selectedHoliday = computed(() => holidayMap.value[settleDate.value] || null)
 
 function nameOf(id) {
   return memberMap.value[id] || ''
@@ -86,8 +104,14 @@ async function loadRuns() {
   }
 }
 
+async function loadHolidays() {
+  const { data } = await api.get('/clearing-calendar/holidays')
+  holidays.value = data
+}
+
 async function execute() {
   running.value = true
+  errorMsg.value = ''
   try {
     const { data } = await api.post('/netting-runs', {
       settleDate: settleDate.value,
@@ -98,11 +122,21 @@ async function execute() {
     await loadRuns()
   } catch (e) {
     result.value = null
+    errorMsg.value = e.response?.data?.message || e.message || '轧差失败'
     await loadRuns()
   } finally {
     running.value = false
   }
 }
 
-onMounted(loadRuns)
+onMounted(() => {
+  loadRuns()
+  loadHolidays()
+})
 </script>
+
+<style scoped>
+.fail-alert {
+  margin-top: 16px;
+}
+</style>

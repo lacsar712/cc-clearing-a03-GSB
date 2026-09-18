@@ -37,7 +37,7 @@ docker compose down
 
 | 用户名 | 密码 | 权限 |
 |--------|------|------|
-| operator | op123456 | 可写（轧差、settle、新建会员/义务） |
+| operator | op123456 | 可写（轧差、settle、新建会员/义务、维护清算日历） |
 | viewer | view123456 | 只读 |
 
 ## Verification
@@ -50,6 +50,12 @@ docker compose down
 6. 确认净头寸表 ΣnetAmount = 0，批次状态 COMPLETED
 7. 进入批次详情，点击 Settle，义务变为 SETTLED
 8. 使用 `viewer` 登录，确认只能浏览、无法执行写操作
+
+### 清算日历（假日拦截轧差）
+
+1. 「清算日历」页选择日期、填写假日名称后「添加假日」（viewer 只能查看列表）
+2. 回到「轧差执行」，交割日选成该假日：工具栏出现假日标记，执行后页面内红色告警明确提示 `SETTLE_DATE_HOLIDAY`，且不会产生批次
+3. 删除该假日后再次执行，轧差恢复正常
 
 健康检查：
 

@@ -7,6 +7,7 @@ import com.clearing.netting.domain.model.NettingRun;
 import com.clearing.netting.domain.model.NettingRunStatus;
 import com.clearing.netting.domain.model.ObligationStatus;
 import com.clearing.netting.domain.model.TradeObligation;
+import com.clearing.netting.domain.port.out.ClearingHolidayRepositoryPort;
 import com.clearing.netting.domain.port.out.MemberRepositoryPort;
 import com.clearing.netting.domain.port.out.NetPositionRepositoryPort;
 import com.clearing.netting.domain.port.out.NettingRunRepositoryPort;
@@ -29,6 +30,7 @@ public class NettingApplicationService {
     private final ObligationRepositoryPort obligationRepository;
     private final MemberRepositoryPort memberRepository;
     private final NetPositionRepositoryPort positionRepository;
+    private final ClearingHolidayRepositoryPort holidayRepository;
     private final NettingRunStatusService statusService;
     private final MultilateralNettingService nettingService;
 
@@ -37,11 +39,13 @@ public class NettingApplicationService {
             ObligationRepositoryPort obligationRepository,
             MemberRepositoryPort memberRepository,
             NetPositionRepositoryPort positionRepository,
+            ClearingHolidayRepositoryPort holidayRepository,
             NettingRunStatusService statusService) {
         this.runRepository = runRepository;
         this.obligationRepository = obligationRepository;
         this.memberRepository = memberRepository;
         this.positionRepository = positionRepository;
+        this.holidayRepository = holidayRepository;
         this.statusService = statusService;
         this.nettingService = new MultilateralNettingService();
     }
@@ -76,6 +80,11 @@ public class NettingApplicationService {
         }
         if (currency == null || currency.isBlank()) {
             throw new DomainException("INVALID_CURRENCY", "currency is required");
+        }
+        if (holidayRepository.existsById(settleDate)) {
+            throw new DomainException(
+                    "SETTLE_DATE_HOLIDAY",
+                    "settleDate " + settleDate + " is a clearing holiday, netting is not allowed");
         }
         String ccy = currency.trim().toUpperCase();
 
