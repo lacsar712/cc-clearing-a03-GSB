@@ -30,6 +30,7 @@ public class NettingApplicationService {
     private final MemberRepositoryPort memberRepository;
     private final NetPositionRepositoryPort positionRepository;
     private final NettingRunStatusService statusService;
+    private final HolidayApplicationService holidayService;
     private final MultilateralNettingService nettingService;
 
     public NettingApplicationService(
@@ -37,12 +38,14 @@ public class NettingApplicationService {
             ObligationRepositoryPort obligationRepository,
             MemberRepositoryPort memberRepository,
             NetPositionRepositoryPort positionRepository,
-            NettingRunStatusService statusService) {
+            NettingRunStatusService statusService,
+            HolidayApplicationService holidayService) {
         this.runRepository = runRepository;
         this.obligationRepository = obligationRepository;
         this.memberRepository = memberRepository;
         this.positionRepository = positionRepository;
         this.statusService = statusService;
+        this.holidayService = holidayService;
         this.nettingService = new MultilateralNettingService();
     }
 
@@ -78,6 +81,12 @@ public class NettingApplicationService {
             throw new DomainException("INVALID_CURRENCY", "currency is required");
         }
         String ccy = currency.trim().toUpperCase();
+
+        if (holidayService.isHoliday(settleDate)) {
+            throw new DomainException(
+                    "HOLIDAY_BLOCKED",
+                    "目标交割日 " + settleDate + " 为清算假日，不能执行轧差；请在清算日历页调整假日或更换交割日");
+        }
 
         NettingRun run = NettingRun.create(settleDate, ccy);
         run.markRunning();

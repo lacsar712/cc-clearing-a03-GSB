@@ -13,7 +13,20 @@
         </el-select>
         <el-button type="primary" :disabled="!auth.isOperator" :loading="running" @click="execute">执行轧差</el-button>
         <el-button @click="loadRuns">刷新批次</el-button>
+        <el-tag v-if="isSelectedHoliday" type="danger" effect="dark">
+          {{ settleDate }} 是清算假日，执行将被拦截
+        </el-tag>
       </div>
+      <el-alert
+        v-if="errorMsg"
+        :title="errorTitle"
+        :description="errorMsg"
+        type="error"
+        show-icon
+        :closable="true"
+        style="margin-top:12px"
+        @close="errorMsg = ''"
+      />
     </div>
 
     <div v-if="result" class="card-panel" style="margin-top:16px">
@@ -49,15 +62,21 @@
         </el-table-column>
         <el-table-column prop="settleDate" label="交割日" width="120" />
         <el-table-column prop="currency" label="币种" width="90" />
-        <el-table-column prop="status" label="状态" width="120" />
-        <el-table-column prop="failureReason" label="失败原因" min-width="180" />
+        <el-table-column prop="status" label="状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'COMPLETED' ? 'success' : row.status === 'FAILED' ? 'danger' : 'info'">
+              {{ row.status }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="failureReason" label="失败原因" min-width="220" />
       </el-table>
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../api/client'
 import { useAuthStore } from '../stores/auth'
@@ -70,9 +89,19 @@ const loading = ref(false)
 const result = ref(null)
 const runs = ref([])
 const memberMap = ref({})
+const holidays = ref([])
+const errorMsg = ref('')
+const errorTitle = ref('轧差失败')
+
+const isSelectedHoliday = computed(() => holidays.value.includes(settleDate.value))
 
 function nameOf(id) {
   return memberMap.value[id] || ''
+}
+
+async function loadHolidays() {
+  const { data } = await api.get('/holidays')
+  holidays.value = data.map((h) => h.holidayDate)
 }
 
 async function loadRuns() {
@@ -88,6 +117,7 @@ async function loadRuns() {
 
 async function execute() {
   running.value = true
+  errorMsg.value = ''
   try {
     const { data } = await api.post('/netting-runs', {
       settleDate: settleDate.value,
@@ -98,11 +128,19 @@ async function execute() {
     await loadRuns()
   } catch (e) {
     result.value = null
+    const payload = e.response?.data
+    const code = payload?.code || ''
+    const msg = payload?.message || e.message || '轧差失败'
+    errorTitle.value = code === 'HOLIDAY_BLOCKED' ? '轧差被清算日历拦截' : `轧差失败${code ? `（${code}）` : ''}`
+    errorMsg.value = msg
     await loadRuns()
   } finally {
     running.value = false
   }
 }
 
-onMounted(loadRuns)
+onMounted(() => {
+  loadRuns()
+  loadHolidays()
+})
 </script>

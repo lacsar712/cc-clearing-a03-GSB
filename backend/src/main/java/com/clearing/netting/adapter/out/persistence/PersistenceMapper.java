@@ -1,10 +1,12 @@
 package com.clearing.netting.adapter.out.persistence;
 
+import com.clearing.netting.adapter.out.persistence.entity.HolidayJpaEntity;
 import com.clearing.netting.adapter.out.persistence.entity.MemberJpaEntity;
 import com.clearing.netting.adapter.out.persistence.entity.NetPositionJpaEntity;
 import com.clearing.netting.adapter.out.persistence.entity.NettingRunJpaEntity;
 import com.clearing.netting.adapter.out.persistence.entity.ObligationJpaEntity;
 import com.clearing.netting.adapter.out.persistence.entity.UserJpaEntity;
+import com.clearing.netting.domain.model.Holiday;
 import com.clearing.netting.domain.model.Member;
 import com.clearing.netting.domain.model.NetPosition;
 import com.clearing.netting.domain.model.NettingRun;
@@ -25,6 +27,17 @@ final class PersistenceMapper {
         e.setMemberId(m.getMemberId());
         e.setName(m.getName());
         e.setStatus(m.getStatus());
+        return e;
+    }
+
+    static Holiday toDomain(HolidayJpaEntity e) {
+        return new Holiday(e.getHolidayDate(), e.getName());
+    }
+
+    static HolidayJpaEntity toEntity(Holiday h) {
+        HolidayJpaEntity e = new HolidayJpaEntity();
+        e.setHolidayDate(h.getHolidayDate());
+        e.setName(h.getName());
         return e;
     }
 
